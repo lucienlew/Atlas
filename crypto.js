@@ -1,9 +1,9 @@
 /* Crypto layer. Nothing else in the app touches WebCrypto directly.
  *
  * Design decisions, and why:
- * - PBKDF2-HMAC-SHA256 at 600,000 iterations: the current OWASP figure for this
- *   primitive. About a second once at unlock, and expensive for anyone guessing
- *   offline against a stolen export.
+ * - PBKDF2-HMAC-SHA256 at 1,200,000 iterations: double the current OWASP figure
+ *   for this primitive. Measured at ~220ms on an iPhone, and expensive for
+ *   anyone guessing offline against a stolen export.
  * - The derived key is created with extractable:false, so even code running in
  *   this page cannot read the raw key bytes back out of it.
  * - AES-256-GCM with a fresh random 96-bit IV for every encryption. GCM is
@@ -13,7 +13,15 @@
  * - Records are encrypted individually, not as one blob, so one corrupt record
  *   cannot take the whole store down with it.
  */
-export const KDF = { name: 'PBKDF2', hash: 'SHA-256', iterations: 600000, saltBytes: 16 };
+/* Raised from 600,000 after measuring 109ms on a real iPhone. Doubling the
+ * work factor doubles an offline attacker's cost for a delay you will not
+ * notice at unlock.
+ *
+ * Safe to change at any time: store.js records the iteration count used when a
+ * vault was created and reads it back at unlock, so an existing vault keeps
+ * working with its original count. Only vaults created after this change use
+ * the new one. */
+export const KDF = { name: 'PBKDF2', hash: 'SHA-256', iterations: 1200000, saltBytes: 16 };
 const IV_BYTES = 12;
 const VERIFIER_PLAINTEXT = 'atlas.verifier.v1';
 

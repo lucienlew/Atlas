@@ -439,3 +439,109 @@ button { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .rises { animation: none; }
 }
+
+/* ---------- people ---------- */
+/* The list is a ledger of relationships: name on the left, where you stand on
+ * the right, in the same tabular column the money always lives in. */
+.people-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line-soft);
+}
+
+.person-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.6875rem 0.25rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line-soft);
+  background: none;
+}
+
+.person-row:active { background: var(--paper); }
+.person-row.is-on { background: var(--paper); box-shadow: inset 2px 0 0 var(--brass); }
+
+.person-row-main { display: flex; flex-direction: column; gap: 0.0625rem; min-width: 0; flex: 1; }
+
+.person-name {
+  font-family: var(--display);
+  font-size: 1.0625rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.person-sub {
+  font-size: 0.75rem;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.person-net {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  color: var(--faint);
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* ---------- chips: the few iOS hooks a web app really has ---------- */
+.reach-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+.chip {
+  display: inline-grid;
+  place-items: center;
+  min-height: 38px;
+  padding: 0 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 19px;
+  background: var(--raise);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.chip:active { background: var(--paper); color: var(--text); }
+
+/* ---------- small inline forms inside cards ---------- */
+.inline-form { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; }
+.inline-form .field { flex: 1; min-width: 0; }
+.inline-form .btn { flex: none; }
+
+.inline-label {
+  font-size: 0.875rem;
+  color: var(--muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: var(--tap);
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.check-row input { width: 22px; height: 22px; accent-color: var(--brass); }
+
+select.field {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+                    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(50% + 2px), calc(100% - 13px) calc(50% + 2px);
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 2.25rem;
+}

@@ -12,6 +12,7 @@ import * as routes from './routes.js';
 import * as ai from './ai.js';
 import { eventToICS } from './ics.js';
 import * as ui from './ui.js';
+import * as people from './people.js';
 import { passphraseStrength } from './crypto.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
@@ -33,7 +34,10 @@ function lockNow(message) {
   ui.showApp(false);
   ui.el.pass.value = '';
   ui.el.pass2.value = '';
-  ui.el.sheet.classList.add('hidden');
+  ['sheet', 'peopleSheet', 'personSheet', 'splitSheet'].forEach((id) => {
+    const n = document.getElementById(id);
+    if (n) n.classList.add('hidden');
+  });
   ui.note(ui.el.gateNote, message || '', message ? 'note-warn' : '');
   ui.el.gateGo.textContent = 'Unlock';
 }
@@ -348,6 +352,11 @@ ui.el.scanFile.addEventListener('change', (e) => {
   if (file) scan(file);
   e.target.value = '';
 });
+
+/* Any change made in the People section refreshes the settings counters, so the
+ * record count and the ledger never drift apart from what you just did. */
+people.init(() => refreshStats());
+ui.el.peopleBtn.addEventListener('click', () => people.openPeople());
 
 ui.el.lockBtn.addEventListener('click', () => lockNow('Locked.'));
 ui.el.settingsBtn.addEventListener('click', () => { loadSettingsIntoForm(); ui.el.sheet.classList.remove('hidden'); });

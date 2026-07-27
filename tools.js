@@ -54,6 +54,58 @@ tool('record_repayment', 'Log a full or partial repayment against a debt.',
   obj({ debt_id: I, amount: N, note: S }, ['debt_id', 'amount']),
   (a) => m.recordRepayment(a), true);
 
+tool('split_bill', "Split a bill between people. Give the total and each person's "
+  + "share; use who='me' for the owner. The owner's own share is recorded as an "
+  + "expense and everyone else's becomes a debt, so spending summaries stay "
+  + "accurate. Shares must add up to the total.",
+  obj({
+    total: N,
+    payer: { type: 'string', description: "'me', or a contact id as a string" },
+    participants: {
+      type: 'array',
+      description: 'every person in the split, with the amount they are responsible for',
+      items: obj({
+        who: { type: 'string', description: "'me' or a contact id" },
+        amount: N,
+      }, ['who', 'amount']),
+    },
+    description: S, category: S,
+    date: { type: 'string', description: 'YYYY-MM-DD' },
+    currency: S,
+    record_my_share: { type: 'boolean', description: 'default true' },
+  }, ['total', 'participants']),
+  (a) => m.splitBill({
+    total: a.total, payer: a.payer, participants: a.participants,
+    description: a.description, category: a.category, date: a.date,
+    currency: a.currency, recordMyShare: a.record_my_share !== false,
+  }), true);
+
+tool('even_shares', 'Work out an even split of a total between N people, with the '
+  + 'remainder pennies distributed so the shares add back to the exact total. '
+  + 'Use this before split_bill rather than dividing yourself.',
+  obj({ total: N, people: I }, ['total', 'people']),
+  (a) => ({ shares: m.evenShares(a.total, a.people) }));
+
+tool('contact_position', 'Where the owner stands with one person: the net balance '
+  + 'and every open debt in both directions.',
+  obj({ contact_id: I }, ['contact_id']), (a) => m.position(a.contact_id));
+
+tool('people_overview', 'Everyone the owner knows with their net balance, heaviest '
+  + 'first. Use for "who do I need to settle up with".', obj({}),
+  () => m.peopleWithPositions().map((p) => ({
+    id: p.id, full_name: p.full_name, relationship: p.relationship, net: p.net,
+  })));
+
+tool('write_off_debt', 'Close a debt without recording a payment, when it will '
+  + 'never be paid or is being forgiven.',
+  obj({ debt_id: I, note: S }, ['debt_id']),
+  (a) => m.writeOffDebt(a.debt_id, a.note), true);
+
+tool('delete_contact', 'Delete a contact. Refuses while they have open balances '
+  + 'unless force is true; their past expenses are kept but unlinked.',
+  obj({ contact_id: I, force: { type: 'boolean' } }, ['contact_id']),
+  (a) => m.deleteContact(a.contact_id, { force: Boolean(a.force) }), true);
+
 tool('list_debts', 'List outstanding debts, optionally for one contact or one direction.',
   obj({ contact_id: I, direction: { type: 'string', enum: ['owes_me', 'i_owe'] } }),
   (a) => m.listDebts(a));

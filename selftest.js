@@ -8,6 +8,7 @@
  */
 import * as c from './crypto.js';
 import { eventToICS } from './ics.js';
+import * as vcard from './vcard.js';
 
 const out = document.getElementById('results');
 let pass = 0;
@@ -68,6 +69,23 @@ async function run() {
   ok('DTSTAMP is UTC', /DTSTAMP:\d{8}T\d{6}Z/.test(timed));
   const long = eventToICS({ id: 3, title: 'x'.repeat(120), start_at: '2026-07-28T06:00' });
   ok('long lines folded under 76 octets', long.split('\r\n').every((l) => new TextEncoder().encode(l).length <= 76));
+
+  line('Contacts (vCard)', 'head');
+  const sample = ['BEGIN:VCARD', 'VERSION:3.0', 'N:Tan;John;;;', 'FN:John Tan',
+    'item1.TEL:+65 9123 4567', 'EMAIL;type=INTERNET:john@example.com',
+    'ORG:Acme Pte Ltd;Engineering', 'BDAY:1988-04-12',
+    'NOTE:A note long enough that vCard folding has to break it across more tha',
+    ' n one line', 'PHOTO;ENCODING=b;TYPE=JPEG:/9j/4AAQSkZJRg', 'END:VCARD'].join('\r\n');
+  const parsed = vcard.parse(sample).cards;
+  ok('reads an Apple-style card', parsed.length === 1 && parsed[0].full_name === 'John Tan');
+  ok('picks up grouped item1.TEL', parsed[0].phones.includes('+65 9123 4567'));
+  ok('takes the first ORG component only', parsed[0].company === 'Acme Pte Ltd');
+  ok('rejoins folded notes', parsed[0].notes.includes('more than one line'));
+  ok('skips embedded photos', !JSON.stringify(parsed[0]).includes('9j/4AAQ'));
+  const written = vcard.toVCard(parsed[0]);
+  ok('writes a card iOS will import', written.includes('VERSION:3.0') && written.includes('\r\n'));
+  ok('round-trips without loss', vcard.parse(written).cards[0].emails[0] === 'john@example.com');
+  ok('written lines stay under 76 octets', written.split('\r\n').every((l) => new TextEncoder().encode(l).length <= 76));
 
   line('Environment', 'head');
   ok('running over HTTPS or localhost (required for storage and service workers)', window.isSecureContext);

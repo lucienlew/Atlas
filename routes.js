@@ -109,7 +109,8 @@ function contactList(q) {
 export const HELP = `**Shorthand** — instant, private, and free. No model involved.
 
 *Ask*
-· owed · i owe · worth · spending · reminders · today · week · contacts [name] · log
+· owed · i owe · people · worth · spending · reminders · today · week
+· contacts [name] · log
 
 *Record*
 · spent 12.50 coffee
@@ -118,6 +119,7 @@ export const HELP = `**Shorthand** — instant, private, and free. No model invo
 · john owes 20 dinner
 · i owe sara 15 taxi
 · john paid 20
+· split 60 dinner with john, sara
 · remind call the bank @ ${m.tomorrowISO()} 09:00
 · event dentist @ ${m.tomorrowISO()} 10:00 at Orchard
 · contact Sara Lim
@@ -188,6 +190,40 @@ const WRITES = [
     },
   },
   {
+    // "split 60 dinner with john, sara" — you paid, shared evenly with everyone
+    // named plus yourself. Anything more involved (someone else paid, uneven
+    // shares) goes through People -> split, where you can see the preview.
+    re: new RegExp(`^split\\s+${AMT}\\s+(.+?)\\s+with\\s+(.+)$`, 'iu'),
+    run: async (mt) => {
+      const total = num(mt[1]);
+      const label = mt[2].trim();
+      const names = mt[3].split(/,|\band\b|&/).map((x) => x.trim()).filter(Boolean);
+      if (!names.length) throw new m.DataError('Name at least one person to split with.');
+      const found = [];
+      for (const n of names) found.push(await findOne(n));
+      const shares = m.evenShares(total, found.length + 1);
+      const res = await m.splitBill({
+        total,
+        payer: 'me',
+        description: label,
+        category: 'split',
+        participants: [
+          { who: 'me', amount: shares[0] },
+          ...found.map((c, i) => ({ who: c.id, amount: shares[i + 1] })),
+        ],
+      });
+      const rows = [leader('Your share', m.money(shares[0]))];
+      found.forEach((c, i) => rows.push(leader(`${c.full_name} owes you`, m.money(shares[i + 1]))));
+      return {
+        title: `${label} split ${found.length + 1} ways`,
+        total: m.money(total),
+        totalLabel: 'you paid',
+        rows,
+        footer: `Your share was recorded as an expense. ${res.debts.length} balance(s) created.`,
+      };
+    },
+  },
+  {
     re: /^remind\s+(.+?)\s+@\s*(.+)$/iu,
     run: async (mt) => {
       const r = await m.addReminder(mt[1].trim(), whenFrom(mt[2]));
@@ -240,6 +276,16 @@ const READS = [
   [/^(reminders?|todos?|to.?do)$/iu, reminderList],
   [/^(today|brief|agenda|what.?s my day|whats my day)$/iu, brief],
   [/^(week|this week|next 7 days|upcoming)$/iu, week],
+  [/^(people|balances|who)$/iu, () => {
+    const rows = m.peopleWithPositions().filter((p) => p.net !== 0);
+    if (!rows.length) return { title: 'Everyone is settled up.', rows: [] };
+    return {
+      title: 'Where you stand',
+      rows: rows.map((p) => leader(p.full_name,
+        p.net > 0 ? `+${m.money(p.net)}` : `-${m.money(-p.net)}`)),
+      footer: 'Open People for the detail, or to settle one.',
+    };
+  }],
   [/^contacts?$/iu, () => contactList('')],
   [/^contacts?\s+(.+)$/iu, (mt) => contactList(mt[1])],
   [/^(help|\?|commands)$/iu, () => ({ markdown: HELP })],

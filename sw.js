@@ -1,13 +1,14 @@
 /* Service worker: cache the app shell so Atlas opens with no network.
    Cache-first for the shell, and NEVER for api.anthropic.com — request and
    response bodies must not end up sitting in the Cache API. */
-const VERSION = 'atlas-v2';
+const VERSION = 'atlas-v3';
 const SHELL = [
   './', './index.html', './app.css', './manifest.webmanifest',
-  './js/app.js', './js/crypto.js', './js/store.js', './js/model.js',
-  './js/routes.js', './js/ics.js', './js/tools.js', './js/ai.js', './js/ui.js',
-  './icons/icon-192.png', './icons/apple-touch-icon.png',
-  './test.html', './test.css', './js/selftest.js',
+  './app.js', './crypto.js', './store.js', './model.js',
+  './routes.js', './ics.js', './tools.js', './ai.js', './ui.js',
+  './people.js', './vcard.js',
+  './icon-192.png', './apple-touch-icon.png',
+  './test.html', './test.css', './selftest.js',
 ];
 
 self.addEventListener('install', (e) => {

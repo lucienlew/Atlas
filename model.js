@@ -502,6 +502,223 @@ export function listDocuments({ contact_id, doc_type } = {}) {
     .map((d) => ({ id: d.id, doc_type: d.doc_type, merchant: d.merchant, amount: d.amount, doc_date: d.doc_date, summary: d.summary }));
 }
 
+/* ---------------- per-person position ---------------- */
+/* Net position with one person: positive means they owe you, negative means you
+ * owe them. Currencies are not converted - if you use more than one with the
+ * same person, they are reported separately rather than silently summed. */
+export function position(contactId) {
+  const id = Number(contactId);
+  const open = debts().filter((d) => d.contact_id === id && d.remaining > 0);
+  const byCurrency = new Map();
+  open.forEach((d) => {
+    const cur = d.currency || currency();
+    const signed = d.direction === 'owes_me' ? d.remaining : -d.remaining;
+    byCurrency.set(cur, Math.round(((byCurrency.get(cur) || 0) + signed) * 100) / 100);
+  });
+  return {
+    contact_id: id,
+    by_currency: Array.from(byCurrency, ([cur, net]) => ({ currency: cur, net })),
+    net: Math.round((byCurrency.get(currency()) || 0) * 100) / 100,
+    owed_to_me: open.filter((d) => d.direction === 'owes_me'),
+    i_owe: open.filter((d) => d.direction === 'i_owe'),
+  };
+}
+
+/* Everyone, with their net position, heaviest balance first. Drives the People
+ * list, which is the answer to "who do I need to sort out". */
+export function peopleWithPositions() {
+  return contacts()
+    .map((c) => ({
+      id: c.id,
+      full_name: c.full_name,
+      preferred_name: c.preferred_name,
+      relationship: c.relationship,
+      company: c.company,
+      phones: c.phones || [],
+      emails: c.emails || [],
+      last_interaction: c.last_interaction,
+      ...position(c.id),
+    }))
+    .sort((a, b) => Math.abs(b.net) - Math.abs(a.net) || a.full_name.localeCompare(b.full_name));
+}
+
+/* ---------------- splitting a bill ----------------
+ * Allocation is resolved by the caller (the UI or the model tool) and validated
+ * here, so there is exactly one place that decides what a split means.
+ *
+ * What gets recorded, and why:
+ * - Your own share becomes an expense. That keeps spending summaries honest:
+ *   a 60 dinner split three ways cost you 20, and a category total of 60 would
+ *   be a lie.
+ * - Everyone else's share becomes a debt. If you paid, they owe you. If someone
+ *   else paid, you owe them your share.
+ * The spending journal and the debt ledger are separate books here - account
+ * balances are yours to maintain - so a share appearing in both is not double
+ * counting.
+ */
+export async function splitBill({
+  total, currency: cur, payer, participants, description, category, date, recordMyShare = true,
+}) {
+  const gross = amount(total, 'total');
+  const money_cur = cur || currency();
+  const when = date ? requireDate(date, 'date') : todayISO();
+  if (!Array.isArray(participants) || !participants.length) {
+    throw new DataError('Choose at least one person to split between.');
+  }
+
+  const parts = participants.map((p) => {
+    const who = p.who === 'me' ? 'me' : Number(p.who);
+    if (who !== 'me') requireContact(who);
+    return { who, amount: amount(p.amount, 'share') };
+  });
+  const seen = new Set();
+  parts.forEach((p) => {
+    if (seen.has(String(p.who))) throw new DataError('The same person appears twice in the split.');
+    seen.add(String(p.who));
+  });
+
+  const sum = Math.round(parts.reduce((t, p) => t + p.amount, 0) * 100) / 100;
+  if (Math.abs(sum - gross) > 0.01) {
+    throw new DataError(`The shares add up to ${sum}, not ${gross}. Adjust them before recording.`);
+  }
+
+  const payerId = payer === 'me' || payer == null ? 'me' : Number(payer);
+  if (payerId !== 'me') requireContact(payerId);
+
+  const label = description || 'Split bill';
+  const mine = parts.find((p) => p.who === 'me');
+  const created = { transaction_id: null, debts: [], label, total: gross, currency: money_cur };
+
+  if (mine && recordMyShare) {
+    const t = await addTransaction({
+      kind: 'expense', amount: mine.amount, currency: money_cur,
+      category: category || 'split', merchant: null,
+      description: `${label} (your share of ${money_cur} ${gross})`,
+      occurred_on: when,
+      contact_id: payerId === 'me' ? null : payerId,
+    });
+    created.transaction_id = t.transaction_id;
+  }
+
+  if (payerId === 'me') {
+    for (const p of parts) {
+      if (p.who === 'me') continue;
+      const d = await recordDebt({
+        contact_id: p.who, direction: 'owes_me', amount: p.amount,
+        description: label, currency: money_cur,
+      });
+      created.debts.push({ ...d, direction: 'owes_me', contact_id: p.who });
+    }
+  } else if (mine) {
+    const d = await recordDebt({
+      contact_id: payerId, direction: 'i_owe', amount: mine.amount,
+      description: label, currency: money_cur,
+    });
+    created.debts.push({ ...d, direction: 'i_owe', contact_id: payerId });
+  }
+
+  await audit('split_bill', { total: gross, payer: payerId, people: parts.length });
+  return created;
+}
+
+/* Even split with the remainder pennies handed to the earliest participants, so
+ * the shares always add back to the exact total. */
+export function evenShares(total, count) {
+  const cents = Math.round(Number(total) * 100);
+  if (!Number.isFinite(cents) || cents <= 0) throw new DataError('total must be more than zero.');
+  if (!count || count < 1) throw new DataError('Choose at least one person.');
+  const base = Math.floor(cents / count);
+  let extra = cents - base * count;
+  return Array.from({ length: count }, () => {
+    const share = base + (extra > 0 ? 1 : 0);
+    if (extra > 0) extra -= 1;
+    return Math.round(share) / 100;
+  });
+}
+
+/* ---------------- removing a person ---------------- */
+export async function deleteContact(id, { force = false } = {}) {
+  const c = requireContact(id);
+  const open = debts().filter((d) => d.contact_id === c.id && d.remaining > 0);
+  if (open.length && !force) {
+    const total = Math.round(open.reduce((t, d) => t + d.remaining, 0) * 100) / 100;
+    throw new DataError(`${c.full_name} still has ${open.length} open balance(s) totalling ${money(total)}. Settle or write them off first.`);
+  }
+  for (const d of debts()) {
+    if (d.contact_id === c.id) await store.del(`debt:${d.id}`);
+  }
+  for (const t of transactions()) {
+    if (t.contact_id === c.id) await store.put(`txn:${t.id}`, { ...t, contact_id: null });
+  }
+  for (const d of documents()) {
+    if (d.contact_id === c.id) await store.put(`doc:${d.id}`, { ...d, contact_id: null });
+  }
+  await store.del(`contact:${c.id}`);
+  await audit('delete_contact', { id: c.id, name: c.full_name, forced: force });
+  return { deleted_contact: c.id, name: c.full_name };
+}
+
+/* Write off a balance without pretending it was paid, so the history stays
+ * truthful: the payments list shows nothing, the debt just closes. */
+export async function writeOffDebt(debtId, note) {
+  const d = store.get(`debt:${Number(debtId)}`);
+  if (!d) throw new DataError(`No debt with id ${debtId}.`);
+  if (d.remaining <= 0) return { debt_id: d.id, note: 'Already closed.' };
+  await store.put(`debt:${d.id}`, {
+    ...d, remaining: 0, settled_at: nowISO(), written_off: true,
+    write_off_note: note || null, written_off_amount: d.remaining,
+  });
+  await audit('write_off_debt', { id: d.id, amount: d.remaining });
+  return { debt_id: d.id, written_off: d.remaining, currency: d.currency };
+}
+
+/* ---------------- bulk contact import ---------------- */
+/* Used by the vCard importer. Matches on name first, then on any shared phone or
+ * email, so re-importing your address book merges instead of duplicating. */
+export function findExisting({ full_name, phones = [], emails = [] }) {
+  const name = String(full_name || '').trim().toLowerCase();
+  const digits = (s) => String(s).replace(/[^0-9]/g, '').slice(-8);
+  const phoneKeys = new Set(phones.map(digits).filter((x) => x.length >= 7));
+  const emailKeys = new Set(emails.map((e) => String(e).trim().toLowerCase()).filter(Boolean));
+  return contacts().find((c) => {
+    if (name && c.full_name.trim().toLowerCase() === name) return true;
+    if (phoneKeys.size && (c.phones || []).some((p) => phoneKeys.has(digits(p)))) return true;
+    if (emailKeys.size && (c.emails || []).some((e) => emailKeys.has(String(e).trim().toLowerCase()))) return true;
+    return false;
+  }) || null;
+}
+
+export async function upsertContact(card) {
+  const existing = findExisting(card);
+  if (!existing) {
+    const created = await addContact({
+      full_name: card.full_name,
+      nickname: card.nickname, company: card.company, job_title: card.job_title,
+      birthday: card.birthday, address: card.address, notes: card.notes,
+    });
+    const c = store.get(`contact:${created.contact_id}`);
+    await store.put(`contact:${c.id}`, {
+      ...c,
+      phones: Array.from(new Set(card.phones || [])),
+      emails: Array.from(new Set(card.emails || [])),
+    });
+    return { action: 'added', contact_id: c.id, full_name: c.full_name };
+  }
+  const union = (a, b) => Array.from(new Set([...(a || []), ...(b || [])]));
+  await store.put(`contact:${existing.id}`, {
+    ...existing,
+    phones: union(existing.phones, card.phones),
+    emails: union(existing.emails, card.emails),
+    company: existing.company || card.company || null,
+    job_title: existing.job_title || card.job_title || null,
+    birthday: existing.birthday || (card.birthday ? requireDate(card.birthday, 'birthday') : null),
+    address: existing.address || card.address || null,
+    nickname: existing.nickname || card.nickname || null,
+  });
+  await audit('merge_imported_contact', { id: existing.id });
+  return { action: 'merged', contact_id: existing.id, full_name: existing.full_name };
+}
+
 /* ---------------- brief ---------------- */
 export function dailyBrief(day) {
   const d = day ? requireDate(day) : todayISO();

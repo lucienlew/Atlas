@@ -10,7 +10,7 @@ export const el = {
   pass: $('pass'), pass2: $('pass2'),
   bar: $('bar'), log: $('log'), working: $('working'), composer: $('composer'),
   input: $('input'), send: $('send'), cameraBtn: $('cameraBtn'), scanFile: $('scanFile'),
-  settingsBtn: $('settingsBtn'), lockBtn: $('lockBtn'),
+  settingsBtn: $('settingsBtn'), lockBtn: $('lockBtn'), peopleBtn: $('peopleBtn'),
   sheet: $('sheet'), sheetClose: $('sheetClose'),
   apiKey: $('apiKey'), model: $('model'), currency: $('currency'), autolock: $('autolock'),
   saveSettings: $('saveSettings'), exportBtn: $('exportBtn'), importBtn: $('importBtn'),

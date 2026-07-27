@@ -50,6 +50,7 @@
     <line x1="24" y1="50" x2="76" y2="50"></line>
   </svg>
   <h1 class="wordmark">ATLAS</h1>
+  <button class="bar-btn" id="peopleBtn" aria-label="People">people</button>
   <button class="bar-btn" id="settingsBtn" aria-label="Settings">settings</button>
   <button class="bar-btn" id="lockBtn" aria-label="Lock now">lock</button>
 </header>
@@ -73,6 +74,48 @@
     </svg>
   </button>
 </form>
+
+<!-- ========== people ========== -->
+<section class="sheet hidden" id="peopleSheet">
+  <header class="bar">
+    <h1 class="wordmark">PEOPLE</h1>
+    <button class="bar-btn" id="peopleSplitBtn">split</button>
+    <button class="bar-btn" id="peopleClose" aria-label="Close people">done</button>
+  </header>
+  <div class="sheet-body">
+    <label class="hidden" for="peopleSearch">Search people</label>
+    <input class="field" id="peopleSearch" type="search" placeholder="Search by name, company or relationship"
+           autocapitalize="off" autocomplete="off">
+    <div id="peopleList"></div>
+    <div class="group">
+      <p class="group-title">Apple Contacts</p>
+      <p class="note">Safari gives web apps no access to your address book, so Atlas uses vCard files instead. Export yours from iCloud.com or the Shortcuts app, then bring it in here. Nothing is uploaded — the file is read on this device.</p>
+      <div class="group-row">
+        <button class="btn" id="vcfImportBtn">Import a .vcf</button>
+        <button class="btn" id="vcfExportBtn">Export all</button>
+      </div>
+      <input class="hidden" id="vcfFile" type="file" accept=".vcf,text/vcard,text/x-vcard">
+    </div>
+  </div>
+</section>
+
+<!-- ========== one person ========== -->
+<section class="sheet hidden" id="personSheet">
+  <header class="bar">
+    <h1 class="wordmark" id="personTitle">PERSON</h1>
+    <button class="bar-btn" id="personClose" aria-label="Back to people">done</button>
+  </header>
+  <div class="sheet-body" id="personBody"></div>
+</section>
+
+<!-- ========== split a bill ========== -->
+<section class="sheet hidden" id="splitSheet">
+  <header class="bar">
+    <h1 class="wordmark">SPLIT A BILL</h1>
+    <button class="bar-btn" id="splitClose" aria-label="Close split">done</button>
+  </header>
+  <div class="sheet-body" id="splitBody"></div>
+</section>
 
 <!-- ========== settings ========== -->
 <section class="sheet hidden" id="sheet">
