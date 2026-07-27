@@ -10,9 +10,11 @@ import * as ui from './ui.js';
 const $ = (id) => document.getElementById(id);
 const sheets = { people: $('peopleSheet'), person: $('personSheet'), split: $('splitSheet') };
 let onChanged = () => {};
+let onHistory = () => {};
 
-export function init(changedCallback) {
+export function init(changedCallback, historyCallback) {
   onChanged = changedCallback || (() => {});
+  onHistory = historyCallback || (() => {});
 }
 
 function node(tag, className, textValue) {
@@ -99,8 +101,9 @@ export function renderList() {
     const row = button('', 'person-row', () => openPerson(p.id));
     row.replaceChildren();
     const left = node('div', 'person-row-main');
-    left.appendChild(node('span', 'person-name', p.full_name));
-    const sub = [p.relationship, p.company].filter(Boolean).join(' · ');
+    left.appendChild(node('span', 'person-name', p.display_name));
+    const real = p.display_name === p.full_name ? null : p.full_name;
+    const sub = [real, p.relationship, p.company].filter(Boolean).join(' · ');
     if (sub) left.appendChild(node('span', 'person-sub', sub));
     row.appendChild(left);
     row.appendChild(node('span', `person-net ${tone}`, text));
@@ -115,13 +118,16 @@ export function openPerson(id) {
   const pos = m.position(id);
   const c = detail.profile;
   const body = $('personBody');
-  $('personTitle').textContent = c.full_name;
+  $('personTitle').textContent = m.displayName(c).toUpperCase();
   body.replaceChildren();
 
   // headline position
   const head = node('div', 'card card-local');
   const { text, tone } = netLabel(pos.net);
   head.appendChild(node('p', 'card-eyebrow', [c.relationship, c.company, c.job_title].filter(Boolean).join(' · ') || 'contact'));
+  head.appendChild(node('h2', 'card-title', m.displayName(c)));
+  const real = m.subName(c);
+  if (real) head.appendChild(node('p', 'card-eyebrow', real));
   head.appendChild(node('p', 'total', pos.net ? m.money(Math.abs(pos.net)) : '—'));
   head.appendChild(node('p', `total-label ${tone}`, text));
   if (pos.by_currency.length > 1) {
@@ -149,10 +155,14 @@ export function openPerson(id) {
   }
   [...pos.owed_to_me, ...pos.i_owe].forEach((d) => balances.appendChild(debtCard(d, c)));
   balances.appendChild(button('Record a new balance', 'btn', () => newBalance(c)));
-  balances.appendChild(button(`Split a bill with ${c.preferred_name || c.full_name.split(' ')[0]}`, 'btn', () => openSplit(c.id)));
+  balances.appendChild(button(`Split a bill with ${m.displayName(c)}`, 'btn', () => openSplit(c.id)));
   body.appendChild(balances);
 
   // details
+  const naming = group('Name');
+  naming.appendChild(nameForm(c));
+  body.appendChild(naming);
+
   const info = group('Details');
   const rows = node('ul', 'rows');
   (c.phones || []).forEach((p) => rows.appendChild(ledgerRow('Phone', p)));
@@ -167,6 +177,7 @@ export function openPerson(id) {
 
   // spending linked to them
   if (detail.recent_transactions.length) {
+    // (full history is one tap away, below)
     const spend = group('Recent spending together');
     const rs = node('ul', 'rows');
     detail.recent_transactions.forEach((t) => rs.appendChild(ledgerRow(
@@ -183,6 +194,14 @@ export function openPerson(id) {
     hist.appendChild(rh);
     body.appendChild(hist);
   }
+
+  const more = group('History');
+  more.appendChild(button(`All entries involving ${m.displayName(c)}`, 'btn', () => {
+    close('person');
+    close('people');
+    onHistory(c.id);
+  }));
+  body.appendChild(more);
 
   // destructive
   const danger = group('Remove');
@@ -216,7 +235,7 @@ function linkChip(label, href) {
 function debtCard(d, c) {
   const wrap = node('div', 'card');
   const owed = d.direction === 'owes_me';
-  wrap.appendChild(node('p', 'card-eyebrow', owed ? `${c.full_name} owes you` : `you owe ${c.full_name}`));
+  wrap.appendChild(node('p', 'card-eyebrow', owed ? `${m.displayName(c)} owes you` : `you owe ${m.displayName(c)}`));
   wrap.appendChild(node('h2', 'card-title', d.description || 'No description'));
   wrap.appendChild(node('p', 'total', `${d.currency} ${d.remaining.toFixed(2)}`));
   wrap.appendChild(node('p', 'total-label', `of ${d.currency} ${Number(d.original).toFixed(2)} · id ${d.id}`));
@@ -291,6 +310,35 @@ function newBalance(c) {
   box.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
+/* Two names, two purposes: what you call them, and what the bank calls them. */
+function nameForm(c) {
+  const wrap = node('div', 'card');
+  wrap.appendChild(node('p', 'card-eyebrow', 'what you call them / who they are on paper'));
+  const nick = node('input', 'field');
+  nick.type = 'text';
+  nick.placeholder = 'Nickname — e.g. Johnny';
+  nick.value = c.nickname || '';
+  const full = node('input', 'field');
+  full.type = 'text';
+  full.placeholder = 'Real name — e.g. John Tan Wei Ming';
+  full.value = c.full_name || '';
+  wrap.appendChild(nick);
+  wrap.appendChild(full);
+  wrap.appendChild(button('Save names', 'btn', async () => {
+    try {
+      await m.renameContact(c.id, { nickname: nick.value, full_name: full.value });
+      ui.toast('Saved.');
+      openPerson(c.id);
+      renderList();
+      onChanged();
+    } catch (e) {
+      ui.toast(e.message, true);
+    }
+  }));
+  wrap.appendChild(node('p', 'card-footer', 'Atlas leads with the nickname everywhere, and keeps the real name for transfers and paperwork. Both are searchable.'));
+  return wrap;
+}
+
 function addDetailForm(c) {
   const form = node('div', 'inline-form');
   const kind = node('select', 'field');
@@ -347,7 +395,7 @@ function participantsFor() {
 function nameOf(who) {
   if (who === 'me') return 'You';
   const c = m.contacts().find((x) => String(x.id) === String(who));
-  return c ? c.full_name : `#${who}`;
+  return c ? m.displayName(c) : `#${who}`;
 }
 
 function renderSplit() {
@@ -379,7 +427,7 @@ function renderSplit() {
   me.value = 'me';
   sel.appendChild(me);
   s.people.forEach((c) => {
-    const o = node('option', null, `${c.full_name} paid`);
+    const o = node('option', null, `${m.displayName(c)} paid`);
     o.value = String(c.id);
     sel.appendChild(o);
   });
@@ -397,7 +445,7 @@ function renderSplit() {
     who.appendChild(node('p', 'note', 'No contacts yet. Import your address book, or type: contact Sara Lim'));
   }
   who.appendChild(toggleRow('me', 'You'));
-  s.people.forEach((c) => who.appendChild(toggleRow(String(c.id), c.full_name)));
+  s.people.forEach((c) => who.appendChild(toggleRow(String(c.id), m.displayName(c))));
   body.appendChild(who);
 
   const how = group('How');

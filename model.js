@@ -133,6 +133,19 @@ export async function addContact(fields) {
 
 export function contacts() { return store.all('contact'); }
 
+/* Rename carefully: changing what you call someone must not quietly lose their
+ * real name, and vice versa. */
+export async function renameContact(id, { full_name, nickname, preferred_name }) {
+  const c = requireContact(id);
+  const next = { ...c };
+  if (full_name !== undefined) next.full_name = text(full_name, 'full_name', 120);
+  if (nickname !== undefined) next.nickname = nickname ? String(nickname).trim().slice(0, 60) : null;
+  if (preferred_name !== undefined) next.preferred_name = preferred_name ? String(preferred_name).trim().slice(0, 60) : null;
+  await store.put(`contact:${c.id}`, next);
+  await audit('rename_contact', { id: c.id });
+  return { contact_id: c.id, full_name: next.full_name, nickname: next.nickname };
+}
+
 export function findContacts(query = '') {
   const q = String(query || '').toLowerCase();
   const rows = contacts().filter((c) => !q || [c.full_name, c.preferred_name, c.nickname, c.company, c.relationship, ...(c.tags || [])]
@@ -140,7 +153,10 @@ export function findContacts(query = '') {
   return rows
     .sort((a, b) => a.full_name.localeCompare(b.full_name))
     .slice(0, 25)
-    .map((c) => ({ id: c.id, full_name: c.full_name, relationship: c.relationship, company: c.company }));
+    .map((c) => ({
+      id: c.id, full_name: c.full_name, nickname: c.nickname,
+      display_name: displayName(c), relationship: c.relationship, company: c.company,
+    }));
 }
 
 export function requireContact(id) {
@@ -268,7 +284,7 @@ export async function recordRepayment({ debt_id, amount: amt, note }) {
 }
 
 export function listDebts({ contact_id, direction } = {}) {
-  const byId = new Map(contacts().map((c) => [c.id, c.full_name]));
+  const byId = new Map(contacts().map((c) => [c.id, displayName(c)]));
   return debts()
     .filter((d) => d.remaining > 0
       && (!contact_id || d.contact_id === Number(contact_id))
@@ -531,6 +547,8 @@ export function peopleWithPositions() {
     .map((c) => ({
       id: c.id,
       full_name: c.full_name,
+      nickname: c.nickname,
+      display_name: displayName(c),
       preferred_name: c.preferred_name,
       relationship: c.relationship,
       company: c.company,
@@ -717,6 +735,121 @@ export async function upsertContact(card) {
   });
   await audit('merge_imported_contact', { id: existing.id });
   return { action: 'merged', contact_id: existing.id, full_name: existing.full_name };
+}
+
+/* ---------------- names ----------------
+ * full_name is who they are on paper. nickname is what you actually call them.
+ * The UI leads with the nickname because that is how you think about people,
+ * and keeps the real name underneath because that is what a bank transfer or a
+ * legal document needs.
+ */
+export function displayName(c) {
+  return (c && (c.nickname || c.preferred_name || c.full_name)) || 'Unknown';
+}
+
+export function subName(c) {
+  if (!c) return null;
+  const shown = displayName(c);
+  return shown === c.full_name ? null : c.full_name;
+}
+
+/* ---------------- transaction history ----------------
+ * The spending summary answers "where does it go". This answers "what happened",
+ * which is the question you actually ask when a number looks wrong.
+ */
+export function transactionHistory({ from, to, kind, category, contactId, limit = 400 } = {}) {
+  const names = new Map(contacts().map((c) => [c.id, displayName(c)]));
+  return transactions()
+    .filter((t) => (!from || t.occurred_on >= from)
+      && (!to || t.occurred_on <= to)
+      && (!kind || t.kind === kind)
+      && (!category || (t.category || 'uncategorised') === category)
+      && (contactId == null || t.contact_id === Number(contactId)))
+    .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on) || b.id - a.id)
+    .slice(0, limit)
+    .map((t) => ({
+      id: t.id, kind: t.kind, amount: t.amount, currency: t.currency,
+      category: t.category || 'uncategorised', merchant: t.merchant,
+      description: t.description, date: t.occurred_on,
+      who: t.contact_id ? names.get(t.contact_id) || null : null,
+      contact_id: t.contact_id || null,
+    }));
+}
+
+/* Every repayment and write-off, flattened out of the debts they belong to.
+ * These are not expenses - they are money moving to settle something already
+ * recorded - so they are kept in a separate stream rather than mixed in. */
+export function movementHistory({ from, to, contactId } = {}) {
+  const names = new Map(contacts().map((c) => [c.id, displayName(c)]));
+  const out = [];
+  debts().forEach((d) => {
+    if (contactId != null && d.contact_id !== Number(contactId)) return;
+    (d.payments || []).forEach((p, i) => out.push({
+      id: `${d.id}.${i}`, kind: 'repayment', direction: d.direction,
+      amount: p.amount, currency: d.currency, date: (p.at || '').slice(0, 10),
+      at: p.at, note: p.note, who: names.get(d.contact_id) || '(deleted)',
+      contact_id: d.contact_id, debt_id: d.id, description: d.description,
+    }));
+    if (d.written_off) out.push({
+      id: `${d.id}.wo`, kind: 'write_off', direction: d.direction,
+      amount: d.written_off_amount || 0, currency: d.currency,
+      date: (d.settled_at || '').slice(0, 10), at: d.settled_at,
+      note: d.write_off_note, who: names.get(d.contact_id) || '(deleted)',
+      contact_id: d.contact_id, debt_id: d.id, description: d.description,
+    });
+  });
+  return out
+    .filter((x) => (!from || x.date >= from) && (!to || x.date <= to))
+    .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+}
+
+/* Group a dated list into months, newest first, with a per-month net. */
+export function byMonth(rows) {
+  const groups = new Map();
+  rows.forEach((r) => {
+    const key = (r.date || '').slice(0, 7) || 'undated';
+    if (!groups.has(key)) groups.set(key, { month: key, rows: [], in: 0, out: 0 });
+    const g = groups.get(key);
+    g.rows.push(r);
+    if (r.kind === 'income') g.in = Math.round((g.in + r.amount) * 100) / 100;
+    else if (r.kind === 'expense') g.out = Math.round((g.out + r.amount) * 100) / 100;
+  });
+  return Array.from(groups.values())
+    .map((g) => ({ ...g, net: Math.round((g.in - g.out) * 100) / 100 }))
+    .sort((a, b) => b.month.localeCompare(a.month));
+}
+
+export function categoriesUsed() {
+  return Array.from(new Set(transactions().map((t) => t.category || 'uncategorised'))).sort();
+}
+
+export async function deleteTransaction(id) {
+  const t = store.get(`txn:${Number(id)}`);
+  if (!t) throw new DataError(`No transaction with id ${id}.`);
+  for (const d of documents()) {
+    if (d.transaction_id === t.id) await store.put(`doc:${d.id}`, { ...d, transaction_id: null });
+  }
+  await store.del(`txn:${t.id}`);
+  await audit('delete_transaction', { id: t.id, amount: t.amount });
+  return { deleted_transaction: t.id, amount: t.amount };
+}
+
+/* ---------------- agenda ---------------- */
+export function agenda({ from, to } = {}) {
+  const start = from || todayISO();
+  const rows = listEvents(start, to ? `${to}T23:59` : null);
+  const names = new Map(contacts().map((c) => [c.id, displayName(c)]));
+  return rows.map((e) => ({
+    ...e, who: e.contact_id ? names.get(e.contact_id) || null : null,
+  }));
+}
+
+export function pastEvents(limit = 50) {
+  const today = todayISO();
+  return events()
+    .filter((e) => e.start_at < today)
+    .sort((a, b) => b.start_at.localeCompare(a.start_at))
+    .slice(0, limit);
 }
 
 /* ---------------- brief ---------------- */

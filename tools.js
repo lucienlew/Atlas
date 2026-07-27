@@ -118,6 +118,41 @@ tool('add_transaction', 'Record an expense or income.',
     contact_id: { type: 'integer', description: 'who this relates to, if anyone' },
   }, ['kind', 'amount']), (a) => m.addTransaction(a), true);
 
+tool('transaction_history', 'The actual list of expenses and income, newest '
+  + 'first, with optional filters. Use this when asked what happened rather than '
+  + 'how much in total.',
+  obj({
+    from: { type: 'string', description: 'YYYY-MM-DD' },
+    to: { type: 'string', description: 'YYYY-MM-DD' },
+    kind: { type: 'string', enum: ['expense', 'income'] },
+    category: S, contact_id: I,
+    limit: { type: 'integer', description: 'default 50' },
+  }),
+  (a) => m.transactionHistory({
+    from: a.from ? m.requireDate(a.from, 'from') : null,
+    to: a.to ? m.requireDate(a.to, 'to') : null,
+    kind: a.kind || null, category: a.category || null,
+    contactId: a.contact_id ?? null, limit: a.limit || 50,
+  }));
+
+tool('repayment_history', 'Every repayment and write-off, newest first. Settling a '
+  + 'debt is not spending, so these are separate from transaction_history.',
+  obj({ contact_id: I, from: S, to: S }),
+  (a) => m.movementHistory({
+    contactId: a.contact_id ?? null,
+    from: a.from ? m.requireDate(a.from, 'from') : null,
+    to: a.to ? m.requireDate(a.to, 'to') : null,
+  }));
+
+tool('delete_transaction', 'Delete an expense or income entry that was recorded in error.',
+  obj({ transaction_id: I }, ['transaction_id']),
+  (a) => m.deleteTransaction(a.transaction_id), true);
+
+tool('rename_contact', "Set what the owner calls someone (nickname) and/or their "
+  + 'full real name. Both stay searchable.',
+  obj({ contact_id: I, nickname: S, full_name: S }, ['contact_id']),
+  (a) => m.renameContact(a.contact_id, { nickname: a.nickname, full_name: a.full_name }));
+
 tool('spending_summary', 'Total expenses by category, optionally since a date.',
   obj({ since: { type: 'string', description: 'YYYY-MM-DD' } }),
   (a) => m.spendingRows(a.since ? m.requireDate(a.since, 'since') : null));

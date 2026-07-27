@@ -50,10 +50,15 @@
     <line x1="24" y1="50" x2="76" y2="50"></line>
   </svg>
   <h1 class="wordmark">ATLAS</h1>
-  <button class="bar-btn" id="peopleBtn" aria-label="People">people</button>
   <button class="bar-btn" id="settingsBtn" aria-label="Settings">settings</button>
   <button class="bar-btn" id="lockBtn" aria-label="Lock now">lock</button>
 </header>
+
+<nav class="nav hidden" id="nav" aria-label="Sections">
+  <button class="chip" id="peopleBtn" type="button">People</button>
+  <button class="chip" id="historyBtn" type="button">History</button>
+  <button class="chip" id="agendaBtn" type="button">Calendar</button>
+</nav>
 
 <main class="log hidden" id="log" aria-live="polite"></main>
 <p class="working hidden" id="working">thinking…</p>
@@ -115,6 +120,24 @@
     <button class="bar-btn" id="splitClose" aria-label="Close split">done</button>
   </header>
   <div class="sheet-body" id="splitBody"></div>
+</section>
+
+<!-- ========== transaction history ========== -->
+<section class="sheet hidden" id="historySheet">
+  <header class="bar">
+    <h1 class="wordmark">HISTORY</h1>
+    <button class="bar-btn" id="historyClose" aria-label="Close history">done</button>
+  </header>
+  <div class="sheet-body" id="historyBody"></div>
+</section>
+
+<!-- ========== calendar ========== -->
+<section class="sheet hidden" id="agendaSheet">
+  <header class="bar">
+    <h1 class="wordmark">CALENDAR</h1>
+    <button class="bar-btn" id="agendaClose" aria-label="Close calendar">done</button>
+  </header>
+  <div class="sheet-body" id="agendaBody"></div>
 </section>
 
 <!-- ========== settings ========== -->

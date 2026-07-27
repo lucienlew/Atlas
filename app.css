@@ -545,3 +545,101 @@ select.field {
   background-repeat: no-repeat;
   padding-right: 2.25rem;
 }
+
+/* ---------- section nav ---------- */
+.nav {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.625rem var(--pad);
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--ink);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar { display: none; }
+.nav .chip { flex: none; }
+
+.chip-row { display: flex; gap: 0.375rem; overflow-x: auto; padding-bottom: 0.125rem; scrollbar-width: none; }
+.chip-row::-webkit-scrollbar { display: none; }
+.chip-row .chip { flex: none; min-height: 34px; font-size: 0.75rem; }
+.chip.is-on { background: var(--brass); border-color: var(--brass); color: #16120a; }
+
+/* ---------- history / agenda entries ---------- */
+/* A statement, not a feed: month rules, then one line per movement with the
+   figure in the same tabular column money always occupies. */
+.month-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0 0 0.375rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.month-name {
+  font-family: var(--display);
+  font-size: 1rem;
+  flex: 1;
+}
+
+.month-net {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.entry-list { display: flex; flex-direction: column; }
+
+.entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.625rem 0.125rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.entry-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.0625rem; }
+
+.entry-title {
+  font-size: 0.9375rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-sub { font-size: 0.6875rem; color: var(--faint); font-family: var(--mono); }
+
+.entry-note {
+  font-size: 0.75rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex: none; }
+
+.entry-amount {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.entry-actions { display: flex; gap: 0.25rem; }
+
+.mini-btn {
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 0.25rem 0.375rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 2px;
+}
+
+.mini-btn:active { background: var(--paper); color: var(--text); }
+.mini-btn-danger { color: var(--crimson); }

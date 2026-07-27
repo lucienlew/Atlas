@@ -13,6 +13,7 @@ import * as ai from './ai.js';
 import { eventToICS } from './ics.js';
 import * as ui from './ui.js';
 import * as people from './people.js';
+import * as history from './history.js';
 import { passphraseStrength } from './crypto.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
@@ -34,7 +35,7 @@ function lockNow(message) {
   ui.showApp(false);
   ui.el.pass.value = '';
   ui.el.pass2.value = '';
-  ['sheet', 'peopleSheet', 'personSheet', 'splitSheet'].forEach((id) => {
+  ['sheet', 'peopleSheet', 'personSheet', 'splitSheet', 'historySheet', 'agendaSheet'].forEach((id) => {
     const n = document.getElementById(id);
     if (n) n.classList.add('hidden');
   });
@@ -355,8 +356,11 @@ ui.el.scanFile.addEventListener('change', (e) => {
 
 /* Any change made in the People section refreshes the settings counters, so the
  * record count and the ledger never drift apart from what you just did. */
-people.init(() => refreshStats());
+people.init(() => refreshStats(), (id) => history.openHistory({ contactId: id }));
+history.init({ changed: () => refreshStats(), openPerson: (id) => people.openPerson(id) });
 ui.el.peopleBtn.addEventListener('click', () => people.openPeople());
+ui.el.historyBtn.addEventListener('click', () => history.openHistory({ contactId: null }));
+ui.el.agendaBtn.addEventListener('click', () => history.openAgenda());
 
 ui.el.lockBtn.addEventListener('click', () => lockNow('Locked.'));
 ui.el.settingsBtn.addEventListener('click', () => { loadSettingsIntoForm(); ui.el.sheet.classList.remove('hidden'); });

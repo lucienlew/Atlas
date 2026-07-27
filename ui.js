@@ -10,7 +10,9 @@ export const el = {
   pass: $('pass'), pass2: $('pass2'),
   bar: $('bar'), log: $('log'), working: $('working'), composer: $('composer'),
   input: $('input'), send: $('send'), cameraBtn: $('cameraBtn'), scanFile: $('scanFile'),
-  settingsBtn: $('settingsBtn'), lockBtn: $('lockBtn'), peopleBtn: $('peopleBtn'),
+  settingsBtn: $('settingsBtn'), lockBtn: $('lockBtn'),
+  nav: $('nav'), peopleBtn: $('peopleBtn'), historyBtn: $('historyBtn'),
+  agendaBtn: $('agendaBtn'),
   sheet: $('sheet'), sheetClose: $('sheetClose'),
   apiKey: $('apiKey'), model: $('model'), currency: $('currency'), autolock: $('autolock'),
   saveSettings: $('saveSettings'), exportBtn: $('exportBtn'), importBtn: $('importBtn'),
@@ -143,7 +145,7 @@ export function working(on, label = 'thinking…') {
 
 export function showApp(on) {
   el.gate.classList.toggle('hidden', on);
-  [el.bar, el.log, el.composer].forEach((n) => n.classList.toggle('hidden', !on));
+  [el.bar, el.nav, el.log, el.composer].forEach((n) => n.classList.toggle('hidden', !on));
   el.gateSeal.classList.toggle('is-open', on);
   if (on) el.input.focus();
 }

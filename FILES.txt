@@ -1,37 +1,20 @@
-Atlas v3 — 22 files, all at one level, no subfolders.
+Atlas v4 — 23 files, one level, no subfolders.
 
-Upload ALL of them and let GitHub overwrite by name. It's one selection and one
-commit, and it removes any chance of missing a changed file.
+Upload ALL of them and let GitHub overwrite by name. One selection, one commit,
+no chance of missing a changed file. This folder replaces the v3 one entirely.
 
-CHANGED since what you deployed (12):
-  [ ] crypto.js        key derivation raised to 1,200,000 rounds
-  [ ] model.js         positions, split bill, write-off, delete, contact import
-  [ ] routes.js        "split 60 dinner with john, sara" and "people" shorthand
-  [ ] tools.js         6 new tools for Claude
-  [ ] ui.js            the people button
-  [ ] app.js           People wiring; locking now closes every open sheet
-  [ ] index.html       people button and three new screens
-  [ ] app.css          styles for the People section
-  [ ] selftest.js      vCard checks added
-  [ ] sw.js            version atlas-v3, caches the two new files
-  [ ] people.js        NEW — the People section
-  [ ] vcard.js         NEW — reading and writing Apple contact files
-
-UNCHANGED (10) — harmless to re-upload:
-  [ ] ics.js  store.js  ai.js  test.html  test.css  manifest.webmanifest
-  [ ] icon-192.png  icon-512.png  icon-maskable-512.png  apple-touch-icon.png
+  index.html   app.css   manifest.webmanifest   sw.js
+  app.js   crypto.js   store.js   model.js   routes.js
+  tools.js   ai.js   ics.js   ui.js
+  people.js   vcard.js   history.js          <- history.js is new in v4
+  test.html   test.css   selftest.js
+  icon-192.png   icon-512.png   icon-maskable-512.png   apple-touch-icon.png
 
 AFTER UPLOADING
-  1. Wait a minute.
-  2. Swipe Atlas out of the app switcher completely — don't just background it.
-     The service worker only picks up atlas-v3 on a fresh start.
-  3. Reopen from the Home Screen. A "people" button should be in the top bar.
-  4. Open test.html: 8 new vCard checks, and key derivation now reports about
-     220ms instead of 109ms. That is the raised iteration count, and it is the
-     only thing that should have got slower.
-
-ABOUT THE STRONGER KEY
-  store.js records the iteration count each vault was created with, so an
-  existing vault keeps opening with its original 600,000. Only a vault created
-  after this upload uses 1,200,000. If you have not put real data in yet, create
-  your vault after uploading and you get the stronger setting for free.
+  1. Wait a minute for Pages to redeploy.
+  2. Swipe Atlas out of the app switcher completely. Backgrounding is not enough;
+     the service worker only picks up atlas-v4 on a cold start.
+  3. Reopen from the Home Screen.
+  4. You should see a nav row under the header: People · History · Calendar.
+  5. Open test.html — everything green, and key derivation reporting about 220ms
+     rather than 109ms, which is the raised iteration count doing its job.

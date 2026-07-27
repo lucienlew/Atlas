@@ -103,7 +103,7 @@ function week() {
 function contactList(q) {
   const rows = m.findContacts(q || '');
   if (!rows.length) return { title: q ? `No contacts matching "${q}".` : 'No contacts yet.', rows: [] };
-  return { title: q ? `Contacts matching "${q}"` : 'Contacts', rows: rows.map((c) => leader(c.full_name, c.relationship || '—')) };
+  return { title: q ? `Contacts matching "${q}"` : 'Contacts', rows: rows.map((c) => leader(c.display_name + (c.display_name === c.full_name ? '' : ` (${c.full_name})`), c.relationship || '—')) };
 }
 
 export const HELP = `**Shorthand** — instant, private, and free. No model involved.
@@ -134,9 +134,11 @@ async function findOne(name) {
   const hits = m.findContacts(name.trim());
   if (!hits.length) throw new m.DataError(`No contact called "${name.trim()}". Add them with: contact ${name.trim()}`);
   if (hits.length > 1) {
-    const exact = hits.filter((h) => h.full_name.toLowerCase() === name.trim().toLowerCase());
+    const want = name.trim().toLowerCase();
+    const exact = hits.filter((h) => h.full_name.toLowerCase() === want
+      || String(h.nickname || '').toLowerCase() === want);
     if (exact.length === 1) return exact[0];
-    throw new m.DataError(`"${name.trim()}" matches ${hits.map((h) => h.full_name).join(', ')}. Be more specific.`);
+    throw new m.DataError(`"${name.trim()}" matches ${hits.map((h) => h.display_name).join(', ')}. Be more specific.`);
   }
   return hits[0];
 }
@@ -166,7 +168,7 @@ const WRITES = [
     run: async (mt) => {
       const c = await findOne(mt[1]);
       const r = await m.recordDebt({ contact_id: c.id, direction: 'owes_me', amount: num(mt[2]), description: mt[3] ? mt[3].trim() : null });
-      return { title: `${c.full_name} owes you`, rows: [leader(r.description || 'recorded', m.money(r.remaining))], total: m.money(r.remaining) };
+      return { title: `${c.display_name} owes you`, rows: [leader(r.description || 'recorded', m.money(r.remaining))], total: m.money(r.remaining) };
     },
   },
   {
@@ -174,7 +176,7 @@ const WRITES = [
     run: async (mt) => {
       const c = await findOne(mt[1]);
       const r = await m.recordDebt({ contact_id: c.id, direction: 'i_owe', amount: num(mt[2]), description: mt[3] ? mt[3].trim() : null });
-      return { title: `You owe ${c.full_name}`, rows: [leader(r.description || 'recorded', m.money(r.remaining))], total: m.money(r.remaining) };
+      return { title: `You owe ${c.display_name}`, rows: [leader(r.description || 'recorded', m.money(r.remaining))], total: m.money(r.remaining) };
     },
   },
   {
@@ -182,11 +184,11 @@ const WRITES = [
     run: async (mt) => {
       const c = await findOne(mt[1]);
       const open = m.listDebts({ contact_id: c.id, direction: 'owes_me' });
-      if (!open.length) throw new m.DataError(`${c.full_name} has no outstanding debt to you.`);
+      if (!open.length) throw new m.DataError(`${c.display_name} has no outstanding debt to you.`);
       const r = await m.recordRepayment({ debt_id: open[0].id, amount: num(mt[2]) });
       const rows = [leader('Applied', m.money(r.applied)), leader('Still outstanding', m.money(r.remaining))];
       if (r.overpaid_by) rows.push(leader('Overpaid by', m.money(r.overpaid_by)));
-      return { title: r.settled ? `${c.full_name} is settled up` : `${c.full_name} repaid you`, rows };
+      return { title: r.settled ? `${c.display_name} is settled up` : `${c.display_name} repaid you`, rows };
     },
   },
   {
@@ -213,7 +215,7 @@ const WRITES = [
         ],
       });
       const rows = [leader('Your share', m.money(shares[0]))];
-      found.forEach((c, i) => rows.push(leader(`${c.full_name} owes you`, m.money(shares[i + 1]))));
+      found.forEach((c, i) => rows.push(leader(`${c.display_name} owes you`, m.money(shares[i + 1]))));
       return {
         title: `${label} split ${found.length + 1} ways`,
         total: m.money(total),
@@ -281,7 +283,7 @@ const READS = [
     if (!rows.length) return { title: 'Everyone is settled up.', rows: [] };
     return {
       title: 'Where you stand',
-      rows: rows.map((p) => leader(p.full_name,
+      rows: rows.map((p) => leader(p.display_name,
         p.net > 0 ? `+${m.money(p.net)}` : `-${m.money(-p.net)}`)),
       footer: 'Open People for the detail, or to settle one.',
     };
