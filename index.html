@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Content Security Policy is a load-bearing security control here, not
+     boilerplate. The only place this page may send data is the Anthropic API.
+     'self' script-src with no 'unsafe-inline' means an injected <script> or
+     inline handler cannot run, which is what protects the in-memory key. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.anthropic.com; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Atlas</title>
+<meta name="theme-color" content="#10161D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Atlas">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png">
+<link rel="stylesheet" href="./app.css">
+</head>
+<body>
+
+<!-- ========== lock / setup ========== -->
+<section class="gate" id="gate">
+  <svg class="seal gate-seal" id="gateSeal" viewBox="0 0 100 100" aria-hidden="true">
+    <circle cx="50" cy="50" r="34"></circle>
+    <line x1="24" y1="50" x2="76" y2="50"></line>
+  </svg>
+  <h1 class="gate-title">Atlas</h1>
+  <p class="gate-sub" id="gateSub">Everything you record stays encrypted on this device.</p>
+
+  <div class="gate-form">
+    <label class="hidden" for="pass">Passphrase</label>
+    <input class="field" id="pass" type="password" inputmode="text" autocomplete="current-password"
+           autocapitalize="off" spellcheck="false" placeholder="Passphrase">
+    <input class="field hidden" id="pass2" type="password" autocomplete="new-password"
+           autocapitalize="off" spellcheck="false" placeholder="Passphrase again">
+    <button class="btn btn-primary" id="gateGo">Unlock</button>
+    <p class="note" id="gateNote"></p>
+    <button class="btn btn-quiet hidden" id="gateRestore">Restore from a backup file</button>
+    <input class="hidden" id="restoreFile" type="file" accept=".json,application/json">
+  </div>
+</section>
+
+<!-- ========== app ========== -->
+<header class="bar hidden" id="bar">
+  <svg class="seal bar-seal is-open" viewBox="0 0 100 100" aria-hidden="true">
+    <circle cx="50" cy="50" r="34"></circle>
+    <line x1="24" y1="50" x2="76" y2="50"></line>
+  </svg>
+  <h1 class="wordmark">ATLAS</h1>
+  <button class="bar-btn" id="settingsBtn" aria-label="Settings">settings</button>
+  <button class="bar-btn" id="lockBtn" aria-label="Lock now">lock</button>
+</header>
+
+<main class="log hidden" id="log" aria-live="polite"></main>
+<p class="working hidden" id="working">thinking…</p>
+
+<form class="composer hidden" id="composer">
+  <button class="icon-btn" id="cameraBtn" type="button" aria-label="Scan a document">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+      <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.7l1.1-1.8h6.4L15.8 6h1.7A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-12A2.5 2.5 0 0 1 3 16.5z"/>
+      <circle cx="11.5" cy="12.5" r="3.4"/>
+    </svg>
+  </button>
+  <input class="hidden" id="scanFile" type="file" accept="image/*" capture="environment">
+  <textarea class="composer-input" id="input" rows="1" placeholder="owed · spent 12.50 coffee · help"
+            autocapitalize="sentences" autocomplete="off"></textarea>
+  <button class="icon-btn icon-btn-send" id="send" type="submit" aria-label="Send">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+      <path d="M5 12h13M12 5l7 7-7 7"/>
+    </svg>
+  </button>
+</form>
+
+<!-- ========== settings ========== -->
+<section class="sheet hidden" id="sheet">
+  <header class="bar">
+    <h1 class="wordmark">SETTINGS</h1>
+    <button class="bar-btn" id="sheetClose" aria-label="Close settings">done</button>
+  </header>
+  <div class="sheet-body">
+
+    <div class="group">
+      <p class="group-title">This device</p>
+      <div class="stat"><span>Encryption</span><span class="stat-value stat-good">AES-256-GCM · PBKDF2 600k</span></div>
+      <div class="stat"><span>Records stored</span><span class="stat-value" id="statRecords">—</span></div>
+      <div class="stat"><span>Storage kept by Safari</span><span class="stat-value" id="statPersist">—</span></div>
+      <div class="stat"><span>Last backup</span><span class="stat-value" id="statBackup">never</span></div>
+    </div>
+
+    <div class="group">
+      <p class="group-title">Backup — your only copy</p>
+      <p class="note">Safari is allowed to clear local storage. A backup is encrypted with your passphrase, so it is safe to keep in Files or iCloud.</p>
+      <div class="group-row">
+        <button class="btn" id="exportBtn">Save a backup</button>
+        <button class="btn" id="importBtn">Restore</button>
+      </div>
+      <input class="hidden" id="importFile" type="file" accept=".json,application/json">
+    </div>
+
+    <div class="group">
+      <p class="group-title">Claude — optional</p>
+      <p class="note" id="keyNote">Atlas works without this. Add an API key and you can write in plain sentences instead of shorthand. A Claude Pro subscription does not include API access; the key comes from console.anthropic.com and is billed separately.</p>
+      <label class="hidden" for="apiKey">Anthropic API key</label>
+      <input class="field field-mono" id="apiKey" type="password" autocomplete="off"
+             autocapitalize="off" spellcheck="false" placeholder="sk-ant-…">
+      <label class="hidden" for="model">Model</label>
+      <input class="field field-mono" id="model" type="text" autocapitalize="off" spellcheck="false" placeholder="claude-sonnet-5">
+      <div class="stat"><span>Tokens this session</span><span class="stat-value" id="statTokens">0</span></div>
+      <div class="stat"><span>From cache</span><span class="stat-value" id="statCache">—</span></div>
+    </div>
+
+    <div class="group">
+      <p class="group-title">Preferences</p>
+      <label class="hidden" for="currency">Currency</label>
+      <input class="field" id="currency" type="text" autocapitalize="characters" spellcheck="false" placeholder="SGD">
+      <label class="hidden" for="autolock">Lock after (minutes in the background)</label>
+      <input class="field field-mono" id="autolock" type="number" min="0" max="120" step="1" placeholder="5">
+      <p class="note">0 locks the moment you leave the app.</p>
+      <button class="btn" id="saveSettings">Save preferences</button>
+    </div>
+
+    <div class="group">
+      <p class="group-title">Danger</p>
+      <p class="note">Erasing is immediate and cannot be undone. Without a backup and its passphrase, the data is gone.</p>
+      <button class="btn btn-danger" id="eraseBtn">Erase everything on this device</button>
+    </div>
+
+  </div>
+</section>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

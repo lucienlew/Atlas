@@ -1,0 +1,32 @@
+Atlas — the 20 files that go into your GitHub repository.
+
+All at one level. No subfolders. Upload every one of them.
+(This FILES.txt is just a checklist — uploading it does no harm, and leaving it
+out does no harm either.)
+
+  [ ]  1. index.html                the app itself
+  [ ]  2. app.css                   styling
+  [ ]  3. manifest.webmanifest      makes it installable to the Home Screen
+  [ ]  4. sw.js                     lets it open offline
+
+  [ ]  5. app.js                    wiring: lock, composer, settings, backup
+  [ ]  6. crypto.js                 key derivation and AES-GCM
+  [ ]  7. store.js                  encrypted storage, backup and restore
+  [ ]  8. model.js                  records, validation, queries
+  [ ]  9. routes.js                 the shorthand that needs no API key
+  [ ] 10. tools.js                  tool definitions for Claude
+  [ ] 11. ai.js                     Claude client and approval gate (optional)
+  [ ] 12. ics.js                    calendar files
+  [ ] 13. ui.js                     rendering
+
+  [ ] 14. test.html                 the self test page
+  [ ] 15. test.css                  styling for it
+  [ ] 16. selftest.js               the checks it runs
+
+  [ ] 17. icon-192.png
+  [ ] 18. icon-512.png
+  [ ] 19. icon-maskable-512.png
+  [ ] 20. apple-touch-icon.png      the Home Screen icon
+
+After uploading, your repository file list should show all of these and no
+folders. A missing .js file shows up as a blank screen, so count them now.

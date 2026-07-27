@@ -1,0 +1,40 @@
+/* Separate sheet so the app's stylesheet stays about the app. */
+.test-body {
+  display: block;
+  padding: calc(env(safe-area-inset-top) + 1.5rem) 1.125rem calc(2rem + env(safe-area-inset-bottom));
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.test-title {
+  font-family: var(--display);
+  font-size: 1.75rem;
+  font-weight: 500;
+  margin: 0 0 0.25rem;
+}
+
+.test-sub { color: var(--muted); font-size: 0.875rem; margin: 0 0 1.25rem; }
+.test-link { color: var(--brass); }
+
+.check {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  margin: 0.25rem 0;
+  padding-left: 0.25rem;
+  border-left: 2px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.check.good { color: var(--jade); border-left-color: var(--jade); }
+.check.bad { color: var(--crimson); border-left-color: var(--crimson); }
+.check.note { color: var(--brass); border-left-color: var(--brass-dim); }
+
+.check.head {
+  font-family: var(--display);
+  font-size: 1.0625rem;
+  color: var(--text);
+  border-left-color: transparent;
+  margin: 1.5rem 0 0.5rem;
+  padding-left: 0;
+}

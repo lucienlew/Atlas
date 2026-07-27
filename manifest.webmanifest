@@ -1,0 +1,29 @@
+{
+  "name": "Atlas \u2014 private ledger",
+  "short_name": "Atlas",
+  "description": "An encrypted, offline-first personal ledger and assistant. Your data stays on this device.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#10161D",
+  "theme_color": "#10161D",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

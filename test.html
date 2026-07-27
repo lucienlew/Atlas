@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; base-uri 'none'">
+<title>Atlas — self test</title>
+<link rel="stylesheet" href="./app.css">
+<link rel="stylesheet" href="./test.css">
+</head>
+<body class="test-body">
+  <h1 class="test-title">Self test</h1>
+  <p class="test-sub">Runs against this device's own WebCrypto. It does not touch your vault.</p>
+  <div id="results"></div>
+  <p class="test-sub"><a class="test-link" href="./index.html">Back to Atlas</a></p>
+  <script type="module" src="./selftest.js"></script>
+</body>
+</html>

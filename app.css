@@ -1,0 +1,441 @@
+/* Atlas — a passbook, not a chat app.
+ *
+ * Direction: a bank passbook rendered for a dark room. Amounts belong in a
+ * right-aligned monospace column joined to their label by a leader rule, the way
+ * a printed statement does it, because that is the one gesture that makes a
+ * ledger legible at a glance. Colour is almost absent: brass for the seal and
+ * for anything you must decide, jade for money coming to you, crimson for money
+ * leaving. Everything else is ink and rule.
+ *
+ * Type is entirely system faces, which is a security property as much as an
+ * aesthetic one: no font request leaves the device. On iOS that gives New York
+ * for display, SF for body and SF Mono for figures — three genuinely different
+ * voices for free.
+ */
+
+:root {
+  --ink: #10161d;
+  --paper: #171f28;
+  --raise: #1e2833;
+  --line: #26313f;
+  --line-soft: #1d2632;
+  --text: #e9eef3;
+  --muted: #8da0b4;
+  --faint: #5d6f83;
+  --brass: #c9a227;
+  --brass-dim: #7d6520;
+  --jade: #5eb39b;
+  --crimson: #c25a6b;
+
+  --display: ui-serif, "New York", Georgia, "Times New Roman", serif;
+  --body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+
+  --pad: 1.125rem;
+  --radius: 3px;
+  --tap: 44px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+body { display: flex; flex-direction: column; }
+
+button, input, textarea, select {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+button { cursor: pointer; }
+
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- the seal: brass ring with the ledger rule through it ---------- */
+.seal { display: block; }
+.seal circle { fill: none; stroke: var(--brass-dim); stroke-width: 8; }
+.seal line { stroke: var(--brass-dim); stroke-width: 8; }
+.seal.is-open circle, .seal.is-open line { stroke: var(--brass); }
+
+/* ---------- lock screen ---------- */
+.gate {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem var(--pad) calc(2rem + env(safe-area-inset-bottom));
+  text-align: center;
+}
+
+.gate-seal { width: 76px; height: 76px; }
+
+.gate-title {
+  font-family: var(--display);
+  font-size: 2rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+.gate-sub {
+  color: var(--muted);
+  font-size: 0.9375rem;
+  max-width: 30ch;
+  margin: -0.75rem 0 0;
+}
+
+.gate-form { width: 100%; max-width: 22rem; display: flex; flex-direction: column; gap: 0.75rem; }
+
+.field {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  min-height: var(--tap);
+}
+
+.field:focus { border-color: var(--brass-dim); }
+
+.field-mono { font-family: var(--mono); font-size: 0.875rem; }
+
+.btn {
+  min-height: var(--tap);
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raise);
+  letter-spacing: 0.02em;
+}
+
+.btn:active { background: var(--paper); }
+
+.btn-primary {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: #16120a;
+  font-weight: 600;
+}
+
+.btn-primary:active { background: var(--brass-dim); }
+
+.btn-quiet { background: none; border-color: transparent; color: var(--muted); }
+
+.btn-danger { color: var(--crimson); border-color: var(--line); }
+
+.note {
+  font-size: 0.8125rem;
+  color: var(--faint);
+  margin: 0;
+  max-width: 32ch;
+}
+
+.note-warn { color: var(--brass); }
+.note-bad { color: var(--crimson); }
+
+/* ---------- app chrome ---------- */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: calc(env(safe-area-inset-top) + 0.625rem) var(--pad) 0.625rem;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--ink);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.bar-seal { width: 20px; height: 20px; flex: none; }
+
+.wordmark {
+  font-family: var(--display);
+  font-size: 1.0625rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+  flex: 1;
+  font-weight: 500;
+}
+
+.bar-btn {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+/* ---------- transcript ---------- */
+.log {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--pad) var(--pad) 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.said {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 0.5rem 0.8125rem;
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+}
+
+.card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.875rem 1rem 1rem;
+}
+
+.card-local { border-left-color: var(--brass-dim); }
+.card-model { border-left-color: var(--line); }
+.card-bad { border-left-color: var(--crimson); }
+
+.card-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 0.5rem;
+}
+
+.card-title {
+  font-family: var(--display);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* the passbook total */
+.total {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+  margin: 0.375rem 0 0.125rem;
+}
+
+.total-label {
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 0.75rem;
+}
+
+/* the signature: label, leader rule, tabular figure */
+.rows { margin: 0.75rem 0 0; padding: 0; list-style: none; }
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.1875rem 0;
+  font-size: 0.9375rem;
+}
+
+.row-label { color: var(--text); }
+
+.row-fill {
+  flex: 1 1 auto;
+  min-width: 1rem;
+  border-bottom: 1px dotted var(--line);
+  transform: translateY(-0.3rem);
+}
+
+.row-value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.card-footer {
+  margin: 0.875rem 0 0;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--line-soft);
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.prose { margin: 0; font-size: 0.9375rem; white-space: pre-wrap; }
+.prose strong { color: var(--brass); font-weight: 600; }
+.prose em { color: var(--muted); font-style: normal; font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* ---------- confirmation ---------- */
+.confirm { border-left-color: var(--brass); }
+
+.confirm-list {
+  margin: 0.625rem 0 0.875rem;
+  padding: 0;
+  list-style: none;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.confirm-list li { overflow-wrap: anywhere; }
+
+.confirm-actions { display: flex; gap: 0.5rem; }
+.confirm-actions .btn { flex: 1; }
+
+/* ---------- composer ---------- */
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.625rem var(--pad) calc(0.625rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line-soft);
+  background: var(--ink);
+}
+
+.composer-input {
+  flex: 1;
+  resize: none;
+  max-height: 7.5rem;
+  padding: 0.6875rem 0.875rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 1rem;
+}
+
+.composer-input:focus { border-color: var(--brass-dim); }
+
+.icon-btn {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raise);
+  color: var(--muted);
+}
+
+.icon-btn-send { background: var(--brass); border-color: var(--brass); color: #16120a; }
+.icon-btn:disabled { opacity: 0.4; }
+
+.working {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 0 var(--pad) 0.5rem;
+}
+
+/* ---------- settings sheet ---------- */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: var(--ink);
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--pad) var(--pad) calc(2rem + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.group { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.group-title {
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0;
+}
+
+.group-row { display: flex; gap: 0.5rem; }
+.group-row .btn { flex: 1; }
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.stat-value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.stat-good { color: var(--jade); }
+.stat-bad { color: var(--crimson); }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 30;
+  max-width: calc(100vw - 2rem);
+  padding: 0.625rem 1rem;
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+}
+
+.toast-bad { border-color: var(--crimson); }
+
+/* ---------- motion: one orchestrated moment, on unlock ---------- */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.rises { animation: rise 260ms cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rises { animation: none; }
+}
